@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Oakberry Asistencia">
+    <meta name="theme-color" content="#4a1f60">
+    <title>Oakberry - Control de Asistencia</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- PWA Manifest inline -->
+    <link rel="manifest" href="data:application/json,{
+      %22name%22:%22Oakberry%20Asistencia%22,
+      %22short_name%22:%22Asistencia%22,
+      %22start_url%22:%22.%22,
+      %22display%22:%22standalone%22,
+      %22background_color%22:%22%234a1f60%22,
+      %22theme_color%22:%22%234a1f60%22,
+      %22icons%22:[{%22src%22:%22Logo.png%22,%22sizes%22:%22192x192%22,%22type%22:%22image/png%22}]
+    }">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #4a1f60 0%, #7d5596 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4a1f60 0%, #7d5596 100%);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+        .header h1 { font-size: 22px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .header p { font-size: 12px; opacity: 0.9; }
+
+        .content { padding: 24px; }
+
+        .login-form, .app-marcaje { display: none; }
+        .login-form.active, .app-marcaje.active { display: block; }
+
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        input[type="text"], input[type="password"] {
+            width: 100%; padding: 12px;
+            border: 2px solid #e0e0e0; border-radius: 6px;
+            font-size: 14px; transition: border-color 0.3s;
+        }
+        input:focus { outline: none; border-color: #4a1f60; }
+
+        .btn {
+            width: 100%; padding: 14px; border: none; border-radius: 8px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s; display: flex; align-items: center;
+            justify-content: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #4a1f60 0%, #7d5596 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(74,31,96,0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-marcar {
+            background: linear-gradient(135deg, #ff4b5f 0%, #ff6b7f 100%);
+            color: white; font-size: 17px; padding: 18px;
+        }
+        .btn-marcar:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(255,75,95,0.4); }
+
+        .info-card {
+            background: #f5f5f5; border-left: 4px solid #4a1f60;
+            padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 13px;
+        }
+        .info-card strong { display: block; color: #4a1f60; margin-bottom: 4px; }
+        .info-card p { margin: 4px 0; color: #666; }
+
+        .historial { background: #f9f9f9; border-radius: 6px; padding: 12px; max-height: 180px; overflow-y: auto; margin-bottom: 16px; }
+        .historial h3 { font-size: 12px; color: #4a1f60; margin-bottom: 8px; text-transform: uppercase; }
+        .historial-item {
+            background: white; padding: 8px; margin-bottom: 6px;
+            border-radius: 4px; font-size: 12px; border-left: 3px solid #7d5596;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .historial-item .hora { font-weight: 600; color: #4a1f60; }
+        .historial-item .tipo { color: #666; font-size: 11px; }
+        .historial-item img { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; cursor: pointer; }
+
+        .menu-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn-opcion { padding: 14px; font-size: 13px; background: white; border: 2px solid #7d5596; color: #4a1f60; border-radius: 8px; }
+        .btn-opcion:hover { background: #f5f0ff; }
+
+        .btn-logout { background: #f0f0f0; color: #666; margin-top: 16px; }
+        .btn-logout:hover { background: #e0e0e0; transform: none; }
+
+        .error { background: #fee; color: #c33; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; border-left: 4px solid #c33; }
+        .success { background: #efe; color: #3c3; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; border-left: 4px solid #3c3; }
+        .loading { text-align: center; color: #999; padding: 16px; }
+
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid #f0f0f0; border-top: 3px solid #4a1f60; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .ubicacion-status { background: #f0f7ff; padding: 10px 12px; border-radius: 6px; margin-bottom: 14px; font-size: 12px; text-align: center; color: #555; }
+        .ubicacion-status.ok { background: #f0ffe0; color: #3a3; }
+        .ubicacion-status.warning { background: #fff8e0; color: #a93; }
+
+        /* ── Cámara ── */
+        .camara-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: black; z-index: 9999;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .camara-overlay.active { display: flex; }
+
+        #videoPreview {
+            width: 100%; max-width: 480px;
+            border-radius: 0; object-fit: cover;
+        }
+
+        .camara-status {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.7); color: white;
+            padding: 16px; text-align: center; font-size: 14px;
+        }
+
+        .camara-flash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 10000; opacity: 0;
+            pointer-events: none; transition: opacity 0.1s;
+        }
+        .camara-flash.flash { opacity: 1; }
+
+        canvas { display: none; }
+
+        /* PWA install banner */
+        .pwa-banner {
+            background: linear-gradient(135deg, #4a1f60, #7d5596);
+            color: white; padding: 12px 16px;
+            display: none; align-items: center; gap: 10px;
+            font-size: 13px;
+        }
+        .pwa-banner.visible { display: flex; }
+        .pwa-banner button {
+            background: white; color: #4a1f60; border: none;
+            padding: 6px 14px; border-radius: 6px; font-size: 12px;
+            font-weight: 600; cursor: pointer; white-space: nowrap;
+        }
+
+        @media (max-width: 480px) {
+            .container { border-radius: 0; min-height: 100vh; }
+            body { align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Flash de cámara -->
+    <div class="camara-flash" id="camaraFlash"></div>
+
+    <!-- Overlay cámara -->
+    <div class="camara-overlay" id="camaraOverlay">
+        <video id="videoPreview" autoplay playsinline muted></video>
+        <canvas id="fotoCanvas"></canvas>
+        <div class="camara-status">
+            <span class="spinner"></span>
+            <span id="camaraStatusText">Preparando cámara...</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- PWA Banner -->
+        <div class="pwa-banner" id="pwaBanner">
+            <i class="fas fa-download" style="font-size:18px;"></i>
+            <span style="flex:1;">Instalá la app para acceso rápido</span>
+            <button onclick="instalarPWA()">Instalar</button>
+            <button onclick="document.getElementById('pwaBanner').classList.remove('visible')" style="background:transparent;color:white;padding:6px;">✕</button>
+        </div>
+
+        <div class="header">
+            <h1><i class="fas fa-clock"></i> Oakberry Asistencia</h1>
+            <p>Control de Entrada y Salida</p>
+        </div>
+
+        <div class="content">
+            <!-- LOGIN -->
+            <div class="login-form active">
+                <h2 style="color:#333; margin-bottom:20px; font-size:18px;">
+                    <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                </h2>
+                <div id="loginError"></div>
+                <div class="form-group">
+                    <label for="cedula">Número de Cédula</label>
+                    <input type="text" id="cedula" name="username" autocomplete="username" placeholder="Ej: 116710532" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" name="current-password" autocomplete="current-password" placeholder="Ingrese su contraseña" required>
+                </div>
+                <button class="btn btn-primary" onclick="iniciarSesion()">
+                    <i class="fas fa-arrow-right"></i> Entrar
+                </button>
+            </div>
+
+            <!-- APP MARCAJE -->
+            <div class="app-marcaje">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h2 style="color:#333; font-size:18px;">
+                        <i class="fas fa-user-circle"></i> <span id="nombreColaborador"></span>
+                    </h2>
+                    <button class="btn btn-logout" style="width:auto; padding:8px 16px; font-size:12px;" onclick="cerrarSesion()">
+                        <i class="fas fa-sign-out-alt"></i> Salir
+                    </button>
+                </div>
+
+                <div class="info-card">
+                    <strong>Puesto:</strong><p id="puestoColaborador"></p>
+                    <strong>Restaurante:</strong><p id="restauranteColaborador"></p>
+                </div>
+
+                <div id="ubicacionStatus" class="ubicacion-status">
+                    <i class="fas fa-circle-notch fa-spin" style="margin-right:6px;"></i>
+                    Solicitando ubicación...
+                </div>
+
+                <div id="historialDiv" class="historial" style="display:none;">
+                    <h3>Historial de hoy</h3>
+                    <div id="historialContent"></div>
+                </div>
+
+                <div id="mensajeMarcaje"></div>
+
+                <div id="botonMarcajeDiv">
+                    <button class="btn btn-marcar" id="btnMarcar" onclick="marcar()">
+                        <i class="fas fa-check-circle"></i> Marcar
+                    </button>
+                </div>
+
+                <div id="menuOpcionesDiv" style="display:none;">
+                    <p style="font-size:13px; color:#666; margin-bottom:12px; text-align:center;">Seleccione la acción:</p>
+                    <div class="menu-opciones">
+                        <button class="btn btn-opcion" onclick="marcarAccion('Salida turno')">
+                            <i class="fas fa-arrow-right"></i> Salida de turno
+                        </button>
+                        <button class="btn btn-opcion" onclick="marcarAccion('Salida descanso')">
+                            <i class="fas fa-coffee"></i> Salida a descanso
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var colaboradorActual   = null;
+        var posicionActual      = null;
+        var estadoMarcajeActual = 'entrada';
+        var marcajeTimeoutId    = null;
+        var streamCamara        = null;
+        var deferredPrompt      = null; // PWA install prompt
+
+        // ============================================================================
+        // PWA
+        // ============================================================================
+
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('pwaBanner').classList.add('visible');
+        });
+
+        function instalarPWA() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(function(result) {
+                deferredPrompt = null;
+                document.getElementById('pwaBanner').classList.remove('visible');
+            });
+        }
+
+        // ============================================================================
+        // GEOLOCALIZACIÓN
+        // ============================================================================
+
+        function solicitarGeolocalizacion() {
+            if (!('geolocation' in navigator)) {
+                mostrarStatusUbicacion('warning', 'Sin GPS — puede marcar igual');
+                return;
+            }
+            navigator.geolocation.watchPosition(
+                function(position) {
+                    posicionActual = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        precision: position.coords.accuracy
+                    };
+                    var mapsLink = 'https://www.google.com/maps?q=' + posicionActual.lat + ',' + posicionActual.lng;
+                    var div = document.getElementById('ubicacionStatus');
+                    div.className = 'ubicacion-status ok';
+                    div.innerHTML = '<i class="fas fa-map-pin"></i> Ubicación activa (+/-' + Math.round(posicionActual.precision) + 'm) '
+                        + '<a href="' + mapsLink + '" target="_blank" style="color:#4a1f60;font-size:11px;">📍 Ver</a>';
+                },
+                function() {
+                    mostrarStatusUbicacion('warning', 'Sin GPS — puede marcar igual');
+                },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+            );
+        }
+
+        function mostrarStatusUbicacion(estado, mensaje) {
+            var div = document.getElementById('ubicacionStatus');
+            div.className = 'ubicacion-status ' + estado;
+            div.innerHTML = mensaje;
+        }
+
+        // ============================================================================
+        // CÁMARA FRONTAL
+        // ============================================================================
+
+        function tomarFotoAutomatica() {
+            return new Promise(function(resolve) {
+                var overlay = document.getElementById('camaraOverlay');
+                var video   = document.getElementById('videoPreview');
+                var canvas  = document.getElementById('fotoCanvas');
+                var status  = document.getElementById('camaraStatusText');
+
+                overlay.classList.add('active');
+                status.textContent = 'Abriendo cámara...';
+
+                // Solicitar cámara frontal
+                navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false
+                })
+                .then(function(stream) {
+                    streamCamara = stream;
+                    video.srcObject = stream;
+
+                    video.onloadedmetadata = function() {
+                        video.play();
+                        status.textContent = 'Sonría... tomando foto en 2 segundos';
+
+                        // Esperar 2 segundos para que la cámara se estabilice
+                        setTimeout(function() {
+                            // Flash visual
+                            var flash = document.getElementById('camaraFlash');
+                            flash.classList.add('flash');
+                            setTimeout(function() { flash.classList.remove('flash'); }, 150);
+
+                            // Capturar frame
+                            canvas.width  = video.videoWidth  || 640;
+                            canvas.height = video.videoHeight || 480;
+                            var ctx = canvas.getContext('2d');
+                            // Espejo horizontal (selfie natural)
+                            ctx.translate(canvas.width, 0);
+                            ctx.scale(-1, 1);
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                            var fotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+                            // Detener stream y cerrar overlay
+                            stream.getTracks().forEach(function(t) { t.stop(); });
+                            streamCamara = null;
+                            overlay.classList.remove('active');
+
+                            resolve(fotoBase64);
+                        }, 2000);
+                    };
+                })
+                .catch(function(err) {
+                    console.log('Cámara no disponible:', err);
+                    if (streamCamara) streamCamara.getTracks().forEach(function(t) { t.stop(); });
+                    streamCamara = null;
+                    overlay.classList.remove('active');
+                    resolve(null); // Continuar sin foto
+                });
+            });
+        }
+
+        // ============================================================================
+        // AUTENTICACIÓN
+        // ============================================================================
+
+        function iniciarSesion() {
+            var cedula   = document.getElementById('cedula').value.trim();
+            var password = document.getElementById('password').value;
+            if (!cedula || !password) { mostrarError('loginError', 'Complete todos los campos'); return; }
+
+            google.script.run
+                .withSuccessHandler(function(resultado) {
+                    if (resultado.success) {
+                        colaboradorActual = resultado.colaborador;
+                        mostrarAppMarcaje();
+                        solicitarGeolocalizacion();
+                        cargarHistorialDia();
+                        actualizarBoton();
+                    } else {
+                        mostrarError('loginError', resultado.error || 'Error al iniciar sesión');
+                    }
+                })
+                .withFailureHandler(function() {
+                    mostrarError('loginError', 'Error de conexión. Intente de nuevo.');
+                })
+                .validarLoginColaborador(cedula, password);
+        }
+
+        function cerrarSesion() {
+            colaboradorActual = null;
+            posicionActual = null;
+            estadoMarcajeActual = 'entrada';
+            document.getElementById('cedula').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('loginError').innerHTML = '';
+            document.querySelector('.login-form').classList.add('active');
+            document.querySelector('.app-marcaje').classList.remove('active');
+        }
+
+        function mostrarAppMarcaje() {
+            document.querySelector('.login-form').classList.remove('active');
+            document.querySelector('.app-marcaje').classList.add('active');
+            document.getElementById('nombreColaborador').textContent = colaboradorActual.nombre;
+            document.getElementById('puestoColaborador').textContent = colaboradorActual.puesto;
+            document.getElementById('restauranteColaborador').textContent = colaboradorActual.restaurante;
+        }
+
+        // ============================================================================
+        // HISTORIAL Y ESTADO
+        // ============================================================================
+
+        function cargarHistorialDia() {
+            google.script.run
+                .withSuccessHandler(function(marcajes) {
+                    if (!marcajes || marcajes.length === 0) {
+                        document.getElementById('historialDiv').style.display = 'none';
+                        return;
+                    }
+                    document.getElementById('historialDiv').style.display = 'block';
+                    var html = '';
+                    var iconos = {
+                        'Entrada turno':    'fa-sign-in-alt',
+                        'Salida turno':     'fa-sign-out-alt',
+                        'Salida descanso':  'fa-coffee',
+                        'Entrada descanso': 'fa-arrow-left'
+                    };
+                    marcajes.forEach(function(m) {
+                        var icono = iconos[m.tipo] || 'fa-circle';
+                        var dist  = m.distancia ? '<span style="font-size:10px;color:#aaa;"> +/-' + Math.round(m.distancia) + 'm</span>' : '';
+                        var foto  = m.fotoUrl
+                            ? '<img src="' + m.fotoUrl + '" title="Foto marcaje" onclick="window.open(\'' + m.fotoUrl + '\',\'_blank\')">'
+                            : '';
+                        html += '<div class="historial-item">'
+                            + '<div><span class="hora"><i class="fas ' + icono + '"></i> ' + m.hora + '</span><br>'
+                            + '<span class="tipo">' + m.tipo + dist + '</span></div>'
+                            + foto
+                            + '</div>';
+                    });
+                    document.getElementById('historialContent').innerHTML = html;
+                })
+                .obtenerMarcajesDia(colaboradorActual.cedula, obtenerFechaHoy());
+        }
+
+        function actualizarBoton() {
+            google.script.run
+                .withSuccessHandler(function(estado) {
+                    estadoMarcajeActual = estado.estado;
+                    document.getElementById('mensajeMarcaje').innerHTML = '';
+                    var btnDiv  = document.getElementById('botonMarcajeDiv');
+                    var menuDiv = document.getElementById('menuOpcionesDiv');
+
+                    if (estado.estado === 'menu') {
+                        btnDiv.style.display  = 'none';
+                        menuDiv.style.display = 'block';
+                    } else {
+                        menuDiv.style.display = 'none';
+                        var btn = document.getElementById('btnMarcar');
+                        if (!btn) { resetearBotonMarcaje(estado.texto); }
+                        else { btn.innerHTML = '<i class="fas fa-check-circle"></i> ' + estado.texto; btn.disabled = false; }
+                        btnDiv.style.display = 'block';
+                    }
+                })
+                .withFailureHandler(function() { resetearBotonMarcaje('Marcar'); })
+                .calcularEstadoMarcaje(colaboradorActual.cedula);
+        }
+
+        // ============================================================================
+        // MARCAR — con foto automática
+        // ============================================================================
+
+        function resetearBotonMarcaje(textoFallback) {
+            clearTimeout(marcajeTimeoutId);
+            var btnDiv = document.getElementById('botonMarcajeDiv');
+            var btn = document.createElement('button');
+            btn.className = 'btn btn-marcar';
+            btn.id = 'btnMarcar';
+            btn.setAttribute('onclick', 'marcar()');
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> ' + (textoFallback || 'Marcar');
+            btnDiv.innerHTML = '';
+            btnDiv.appendChild(btn);
+            document.getElementById('menuOpcionesDiv').style.display = 'none';
+            btnDiv.style.display = 'block';
+        }
+
+        function marcar() {
+            var tipo;
+            if (estadoMarcajeActual === 'entrada_descanso') tipo = 'Entrada descanso';
+            else if (estadoMarcajeActual === 'salida')      tipo = 'Salida turno';
+            else                                             tipo = 'Entrada turno';
+
+            var btn = document.getElementById('btnMarcar');
+            if (!btn) return;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Procesando...';
+
+            tomarFotoAutomatica().then(function(fotoBase64) {
+                enviarMarcaje(tipo, fotoBase64);
+            });
+        }
+
+        function marcarAccion(tipo) {
+            document.getElementById('menuOpcionesDiv').style.display = 'none';
+            document.getElementById('mensajeMarcaje').innerHTML =
+                '<div class="loading"><span class="spinner"></span> Procesando...</div>';
+
+            tomarFotoAutomatica().then(function(fotoBase64) {
+                enviarMarcaje(tipo, fotoBase64);
+            });
+        }
+
+        function enviarMarcaje(tipo, fotoBase64) {
+            marcajeTimeoutId = setTimeout(function() {
+                resetearBotonMarcaje('Marcar');
+                mostrarMensaje('error', 'Tiempo agotado. Intente de nuevo.');
+            }, 30000);
+
+            google.script.run
+                .withSuccessHandler(function(resultado) {
+                    clearTimeout(marcajeTimeoutId);
+                    if (resultado.success) {
+                        mostrarMensaje('success', '✓ Marcaje registrado' + (resultado.fotoUrl ? ' con foto' : ''));
+                        setTimeout(function() {
+                            cargarHistorialDia();
+                            actualizarBoton();
+                        }, 1200);
+                    } else {
+                        mostrarMensaje('error', resultado.error);
+                        resetearBotonMarcaje('Marcar');
+                    }
+                })
+                .withFailureHandler(function(err) {
+                    clearTimeout(marcajeTimeoutId);
+                    mostrarMensaje('error', 'Error de conexión. Intente de nuevo.');
+                    resetearBotonMarcaje('Marcar');
+                })
+                .guardarMarcaje(
+                    colaboradorActual.cedula,
+                    tipo,
+                    posicionActual ? posicionActual.lat  : '',
+                    posicionActual ? posicionActual.lng  : '',
+                    fotoBase64 || ''
+                );
+        }
+
+        // ============================================================================
+        // UTILIDADES
+        // ============================================================================
+
+        function obtenerFechaHoy() {
+            var hoy = new Date();
+            return hoy.getFullYear() + '-'
+                + String(hoy.getMonth() + 1).padStart(2, '0') + '-'
+                + String(hoy.getDate()).padStart(2, '0');
+        }
+
+        function mostrarError(elementId, mensaje) {
+            document.getElementById(elementId).innerHTML =
+                '<div class="error"><i class="fas fa-exclamation-circle"></i> ' + mensaje + '</div>';
+        }
+
+        function mostrarMensaje(tipo, mensaje) {
+            var div = document.getElementById('mensajeMarcaje');
+            div.innerHTML = tipo === 'success'
+                ? '<div class="success"><i class="fas fa-check-circle"></i> ' + mensaje + '</div>'
+                : '<div class="error"><i class="fas fa-exclamation-circle"></i> ' + mensaje + '</div>';
+        }
+
+        window.addEventListener('load', function() {
+            solicitarGeolocalizacion();
+        });
+    </script>
+</body>
+</html>
